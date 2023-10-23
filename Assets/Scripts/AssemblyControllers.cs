@@ -10,11 +10,11 @@ using UnityEngine;
 
 namespace SixAxisBogieAssembly
 {
-    public class AssemblyController : MonoBehaviour
+    public class AssemblyControllers : MonoBehaviour
     {
         public delegate void PartAssemblyControllerDelegate();
 
-        [SerializeField] private GameObject replaceObject;
+        [SerializeField] private GameObject[] replaceObjects;
         private Transform locationToPlace = default;
 
         [SerializeField] private float MinDistance = 0.001f;
@@ -29,7 +29,7 @@ namespace SixAxisBogieAssembly
         private AudioSource audioSource;
         private ToolTipSpawner toolTipSpawner;
         private List<Collider> colliders;
-        private List<AssemblyController> AssemblyControllers;
+        private List<AssemblyControllers> AssemblyControllerss;
 
         private Transform originalParent;
         private Vector3 originalPosition;
@@ -51,11 +51,8 @@ namespace SixAxisBogieAssembly
 
         private void Start()
         {
-            // Check if object should check for placement
-            locationToPlace = replaceObject.transform;
-            //replaceObject.GetComponent<MeshRenderer>().material = Resources.Load<Material>("XRAY");
-            if (locationToPlace != transform) shouldCheckPlacement = true;
-
+            shouldCheckPlacement = true;
+            
             // Cache references
             audioSource = GetComponent<AudioSource>();
             toolTipSpawner = GetComponent<ToolTipSpawner>();
@@ -65,10 +62,10 @@ namespace SixAxisBogieAssembly
                 foreach (var col in GetComponents<Collider>())
                     colliders.Add(col);
 
-            AssemblyControllers = new List<AssemblyController>();
-            foreach (var controller in FindObjectsOfType<AssemblyController>())
+            AssemblyControllerss = new List<AssemblyControllers>();
+            foreach (var controller in FindObjectsOfType<AssemblyControllers>())
             {
-                AssemblyControllers.Add(controller);
+                AssemblyControllerss.Add(controller);
             }
 
             var trans = transform;
@@ -152,14 +149,11 @@ namespace SixAxisBogieAssembly
         /// </summary>
         public void ResetPlacement()
         {
-            if (AssemblyControllers != null)
-            {
-                foreach (var controller in AssemblyControllers)
-                    if (isPunEnabled)
-                        controller.OnResetPlacement?.Invoke();
-                    else
-                        controller.Reset();
-            }
+            foreach (var controller in AssemblyControllerss)
+                if (isPunEnabled)
+                    controller.OnResetPlacement?.Invoke();
+                else
+                    controller.Reset();
         }
 
         /// <summary>
@@ -170,6 +164,7 @@ namespace SixAxisBogieAssembly
             // Update placement state
             isPlaced = false;
             checking = false;
+            locationToPlace = null;
 
             // Enable ability to manipulate object
             //foreach (var col in colliders) col.enabled = false;
@@ -205,9 +200,16 @@ namespace SixAxisBogieAssembly
 
                 if (!isPlaced)
                 {
-                    if (Vector3.Distance(transform.position, locationToPlace.position) > MinDistance &&
-                        Vector3.Distance(transform.position, locationToPlace.position) < MaxDistance)
-                        SetPlacement();
+                    foreach (var replaceObj in replaceObjects)
+                    {
+                        if (Vector3.Distance(transform.position, replaceObj.transform.position) > MinDistance &&
+                            Vector3.Distance(transform.position, replaceObj.transform.position) < MaxDistance)
+                        {
+                            locationToPlace = replaceObj.transform;
+                            SetPlacement();
+                            break;
+                        }
+                    }
                 }
                 else if (isPlaced)
                 {
